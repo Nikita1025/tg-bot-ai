@@ -1,4 +1,4 @@
-const { splitTextToChunks } = require("../utils/text");
+const { splitTextToChunks } = require("../../utils/text");
 
 function createTelegramSender(bot, telegramConfig) {
   async function sendLongMessage(chatId, text) {

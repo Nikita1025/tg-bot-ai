@@ -45,7 +45,7 @@ async function calculateContextTokenCount(ollamaConfig, model, messages, signal)
   }
 }
 
-function createOllamaService(ollamaConfig) {
+function createLlmClient(ollamaConfig) {
   async function query(messages, modelOverride) {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error("Messages history is required");
@@ -109,5 +109,5 @@ function createOllamaService(ollamaConfig) {
 }
 
 module.exports = {
-  createOllamaService
+  createLlmClient
 };

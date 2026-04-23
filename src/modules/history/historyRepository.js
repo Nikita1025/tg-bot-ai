@@ -17,30 +17,11 @@ function normalizeHistory(rawHistory) {
     }));
 }
 
-function createDialogHistoryService(options) {
+function createHistoryRepository(options) {
   const storageDir = options && options.storageDir ? options.storageDir : path.join(process.cwd(), "data", "history");
-  const maxMessages =
-    options && Number.isInteger(options.maxMessages) && options.maxMessages > 0 ? options.maxMessages : 10;
 
-  function applyHistoryLimit(history) {
-    if (history.length <= maxMessages) {
-      return history;
-    }
-
-    const latestSystemIndex = [...history].map((entry) => entry.role).lastIndexOf("system");
-    if (latestSystemIndex === -1 || maxMessages === 1) {
-      return history.slice(-maxMessages);
-    }
-
-    const preservedSystemMessage = history[latestSystemIndex];
-    const historyWithoutPreservedSystem = history.filter((_, index) => index !== latestSystemIndex);
-    const tailMessages = historyWithoutPreservedSystem.slice(-(maxMessages - 1));
-
-    return [preservedSystemMessage, ...tailMessages];
-  }
-
-  function resolveHistoryPath(chatId) {
-    const safeId = String(chatId).replace(/[^a-zA-Z0-9_-]/g, "_");
+  function resolveHistoryPath(dialogId) {
+    const safeId = String(dialogId).replace(/[^a-zA-Z0-9_-]/g, "_");
     return path.join(storageDir, `${safeId}.yaml`);
   }
 
@@ -48,13 +29,13 @@ function createDialogHistoryService(options) {
     await fs.mkdir(storageDir, { recursive: true });
   }
 
-  async function getHistory(chatId) {
-    const filePath = resolveHistoryPath(chatId);
+  async function getHistory(dialogId) {
+    const filePath = resolveHistoryPath(dialogId);
 
     try {
       const yamlRaw = await fs.readFile(filePath, "utf8");
       const parsed = yaml.load(yamlRaw);
-      return applyHistoryLimit(normalizeHistory(parsed));
+      return normalizeHistory(parsed);
     } catch (error) {
       if (error && error.code === "ENOENT") {
         return [];
@@ -63,10 +44,10 @@ function createDialogHistoryService(options) {
     }
   }
 
-  async function saveHistory(chatId, history) {
+  async function saveHistory(dialogId, history) {
     await ensureStorageDir();
-    const filePath = resolveHistoryPath(chatId);
-    const normalizedHistory = applyHistoryLimit(normalizeHistory(history));
+    const filePath = resolveHistoryPath(dialogId);
+    const normalizedHistory = normalizeHistory(history);
     const yamlContent = yaml.dump(normalizedHistory, {
       lineWidth: -1,
       noRefs: true
@@ -81,5 +62,5 @@ function createDialogHistoryService(options) {
 }
 
 module.exports = {
-  createDialogHistoryService
+  createHistoryRepository
 };

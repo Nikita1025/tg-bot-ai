@@ -1,0 +1,9 @@
+const EVENT_TYPES = {
+  USER_CREATED: "UserCreated",
+  MESSAGE_RECEIVED: "MessageReceived",
+  RESPONSE_GENERATED: "ResponseGenerated"
+};
+
+module.exports = {
+  EVENT_TYPES
+};

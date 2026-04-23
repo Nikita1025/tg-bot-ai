@@ -1,25 +1,54 @@
 const path = require("node:path");
 const { loadConfig } = require("./config/env");
-const { createTelegramBot } = require("./bot/createTelegramBot");
-const { registerHandlers } = require("./bot/registerHandlers");
-const { createOllamaService } = require("./services/ollamaService");
-const { createTelegramSender } = require("./services/telegramSender");
-const { createDialogHistoryService } = require("./services/dialogHistoryService");
-const { createHistoryCompressionService } = require("./services/historyCompressionService");
+const { createTelegramBot } = require("./transport/telegram/createTelegramBot");
+const { registerHandlers } = require("./transport/telegram/registerHandlers");
+const { createLlmClient } = require("./modules/chat/llmClient");
+const { createChatService } = require("./modules/chat/chatService");
+const { createUserRepository } = require("./modules/users/userRepository");
+const { createUsersService } = require("./modules/users/usersService");
+const { createHistoryRepository } = require("./modules/history/historyRepository");
+const { createHistoryService } = require("./modules/history/historyService");
+const { subscribeHistoryEvents } = require("./modules/history/historyEventSubscriber");
+const { createEventBus } = require("./events/eventBus");
+const { createTelegramSender } = require("./transport/telegram/telegramSender");
+const { createConversationService } = require("./services/conversationService");
 
 function startApp() {
   const config = loadConfig();
   const bot = createTelegramBot(config.telegram);
-  const ollamaService = createOllamaService(config.ollama);
-  const telegramSender = createTelegramSender(bot, config.telegram);
-  const dialogHistoryService = createDialogHistoryService({
-    storageDir: config.storage.dialogHistoryDir || path.join(process.cwd(), "data", "history"),
+  const eventBus = createEventBus();
+  const llmClient = createLlmClient(config.ollama);
+  const chatService = createChatService({
+    llmClient,
+    systemPrompt: config.ollama.systemPrompt
+  });
+  const userRepository = createUserRepository({
+    storageFile: config.storage.usersStorageFile || path.join(process.cwd(), "data", "users", "users.yaml")
+  });
+  const usersService = createUsersService({
+    userRepository,
+    defaultModel: config.ollama.defaultModel,
+    eventBus
+  });
+  const historyRepository = createHistoryRepository({
+    storageDir: config.storage.dialogHistoryDir || path.join(process.cwd(), "data", "history")
+  });
+  const historyService = createHistoryService({
+    historyRepository,
     maxMessages: config.storage.dialogHistoryMaxMessages
   });
-  const historyCompressionService = createHistoryCompressionService({
-    ollamaService,
-    summaryThreshold: config.storage.dialogSummaryThreshold,
-    keepRecentMessages: config.storage.dialogSummaryKeepRecentMessages
+  subscribeHistoryEvents({
+    eventBus,
+    historyService,
+    contextEnabled: config.storage.contextEnabled
+  });
+  const telegramSender = createTelegramSender(bot, config.telegram);
+  const conversationService = createConversationService({
+    usersService,
+    historyService,
+    chatService,
+    eventBus,
+    contextEnabled: config.storage.contextEnabled
   });
 
   bot
@@ -32,12 +61,9 @@ function startApp() {
     });
 
   registerHandlers(bot, {
-    ollamaService,
+    conversationService,
     telegramSender,
-    ollamaConfig: config.ollama,
-    contextEnabled: config.storage.contextEnabled,
-    dialogHistoryService,
-    historyCompressionService
+    ollamaConfig: config.ollama
   });
 
   console.log(`Bot started in polling mode. Default model: ${config.ollama.defaultModel}`);
