@@ -1,5 +1,13 @@
 function stringifyMessagesForLogging(messages) {
-  return JSON.stringify(messages, null, 2);
+  const redactedMessages = messages.map((message) => {
+    if (message && message.role === "system") {
+      return { ...message, content: "[REDACTED_SYSTEM_PROMPT]" };
+    }
+
+    return message;
+  });
+
+  return JSON.stringify(redactedMessages, null, 2);
 }
 
 function stringifyMessagesForTokenization(messages) {
