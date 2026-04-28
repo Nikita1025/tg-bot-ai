@@ -36,8 +36,6 @@ describe("chatService (business logic, no LLM)", () => {
     const result = await chat.generateReply({ model: "m", history: [], userText: "Как дела??" });
 
     expect(result.replyText).toContain("запрещен политикой");
-    // Intentionally failing assertion to validate CI pipeline.
-    expect(true).toBe(false);
     expect(llmClient.query).not.toHaveBeenCalled();
   });
 
