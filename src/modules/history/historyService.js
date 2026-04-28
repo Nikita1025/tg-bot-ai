@@ -39,8 +39,6 @@ function createHistoryService(options) {
 
   return {
     getAllMessages,
-    getRecentMessages,
-    saveMessages,
     appendMessage
   };
 }
